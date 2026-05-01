@@ -3,6 +3,9 @@ const grid = document.getElementById("grid");
 const checkedCountElement =
   document.getElementById("checked-count");
 
+const totalCountElement =
+  document.getElementById("total-count");
+
 const connectionStatus =
   document.getElementById("connection-status");
 
@@ -21,17 +24,23 @@ const passwordInput =
 const authStatus =
   document.getElementById("auth-status");
 
-let token = localStorage.getItem("token");
+// =======================
+// AUTH
+// =======================
+
+let token =
+  localStorage.getItem("token");
 
 if (token) {
-  authStatus.textContent = "Logged In";
+  authStatus.textContent =
+    "Logged In";
 }
 
+// =======================
+// WEBSOCKET
+// =======================
+
 let socket;
-
-const TOTAL_CHECKBOXES = 1000;
-
-const checkboxes = {};
 
 function connectWebSocket() {
 
@@ -42,7 +51,8 @@ function connectWebSocket() {
     socketUrl += `?token=${token}`;
   }
 
-  socket = new WebSocket(socketUrl);
+  socket =
+    new WebSocket(socketUrl);
 
   socket.onopen = () => {
 
@@ -80,6 +90,7 @@ function connectWebSocket() {
     const data =
       JSON.parse(event.data);
 
+    // Rate limit
     if (
       data.type === "rate-limit"
     ) {
@@ -89,6 +100,7 @@ function connectWebSocket() {
       return;
     }
 
+    // Unauthorized
     if (
       data.type === "unauthorized"
     ) {
@@ -98,6 +110,7 @@ function connectWebSocket() {
       return;
     }
 
+    // Initial state
     if (
       data.type === "initial-state"
     ) {
@@ -118,6 +131,7 @@ function connectWebSocket() {
       updateCheckedCount();
     }
 
+    // Live updates
     if (
       data.type === "update"
     ) {
@@ -137,57 +151,138 @@ function connectWebSocket() {
 
 connectWebSocket();
 
-for (
-  let i = 0;
-  i < TOTAL_CHECKBOXES;
-  i++
-) {
+// =======================
+// CHECKBOXES
+// =======================
 
-  const checkbox =
-    document.createElement("input");
+const TOTAL_CHECKBOXES = 5000;
 
-  checkbox.type = "checkbox";
+const CHUNK_SIZE = 100;
 
-  checkbox.dataset.id = i;
+let renderedCount = 0;
 
-  checkboxes[i] = checkbox;
+const checkboxes = {};
 
-  checkbox.addEventListener(
-    "change",
-    () => {
+totalCountElement.textContent =
+  TOTAL_CHECKBOXES;
 
-      if (!token) {
+// =======================
+// RENDER CHUNK
+// =======================
 
-        alert(
-          "Login required to toggle checkboxes"
-        );
+function renderCheckboxChunk() {
 
-        checkbox.checked =
-          !checkbox.checked;
+  const fragment =
+    document.createDocumentFragment();
 
-        return;
+  const end =
+    Math.min(
+      renderedCount + CHUNK_SIZE,
+      TOTAL_CHECKBOXES
+    );
+
+  for (
+    let i = renderedCount;
+    i < end;
+    i++
+  ) {
+
+    const checkbox =
+      document.createElement(
+        "input"
+      );
+
+    checkbox.type =
+      "checkbox";
+
+    checkbox.dataset.id = i;
+
+    checkboxes[i] =
+      checkbox;
+
+    checkbox.addEventListener(
+      "change",
+      () => {
+
+        // Require login
+        if (!token) {
+
+          alert(
+            "Login required to toggle checkboxes"
+          );
+
+          checkbox.checked =
+            !checkbox.checked;
+
+          return;
+        }
+
+        // Send update
+        if (
+          socket.readyState ===
+          WebSocket.OPEN
+        ) {
+
+          socket.send(
+            JSON.stringify({
+              type: "toggle",
+              id: i,
+              checked:
+                checkbox.checked,
+            })
+          );
+        }
+
+        updateCheckedCount();
       }
+    );
 
-      if (
-        socket.readyState ===
-        WebSocket.OPEN
-      ) {
+    fragment.appendChild(
+      checkbox
+    );
+  }
 
-        socket.send(
-          JSON.stringify({
-            type: "toggle",
-            id: i,
-            checked: checkbox.checked,
-          })
-        );
-      }
+  grid.appendChild(fragment);
 
-      updateCheckedCount();
-    }
+  renderedCount = end;
+}
+
+// Initial render
+renderCheckboxChunk();
+
+// =======================
+// LAZY LOADING
+// =======================
+
+const gridContainer =
+  document.querySelector(
+    ".grid-container"
   );
 
-  grid.appendChild(checkbox);
-}
+gridContainer.addEventListener(
+  "scroll",
+  () => {
+
+    const nearBottom =
+
+      gridContainer.scrollTop +
+      gridContainer.clientHeight >=
+      gridContainer.scrollHeight - 200;
+
+    if (
+      nearBottom &&
+      renderedCount <
+      TOTAL_CHECKBOXES
+    ) {
+
+      renderCheckboxChunk();
+    }
+  }
+);
+
+// =======================
+// UPDATE COUNT
+// =======================
 
 function updateCheckedCount() {
 
@@ -204,6 +299,10 @@ function updateCheckedCount() {
   checkedCountElement.textContent =
     checked;
 }
+
+// =======================
+// REGISTER
+// =======================
 
 registerBtn.addEventListener(
   "click",
@@ -239,6 +338,10 @@ registerBtn.addEventListener(
     alert(data.message);
   }
 );
+
+// =======================
+// LOGIN
+// =======================
 
 loginBtn.addEventListener(
   "click",
@@ -287,7 +390,9 @@ loginBtn.addEventListener(
 
       connectWebSocket();
 
-      alert("Login successful");
+      alert(
+        "Login successful"
+      );
 
     } else {
 
