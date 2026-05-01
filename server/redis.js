@@ -1,21 +1,44 @@
 const redis = require("redis");
 
-// Create Redis client
+// Main Redis client
 const redisClient = redis.createClient({
   url: "redis://localhost:6379",
 });
 
-// Connect Redis
-redisClient.connect();
+// Publisher client
+const publisher = redisClient.duplicate();
 
-// Success log
-redisClient.on("connect", () => {
-  console.log("🟢 Redis connected");
-});
+// Subscriber client
+const subscriber = redisClient.duplicate();
+
+// Connect all Redis clients
+async function connectRedis() {
+  await redisClient.connect();
+
+  await publisher.connect();
+
+  await subscriber.connect();
+
+  console.log("🟢 Redis clients connected");
+}
+
+connectRedis();
 
 // Error handling
 redisClient.on("error", (err) => {
   console.log("🔴 Redis Error:", err);
 });
 
-module.exports = redisClient;
+publisher.on("error", (err) => {
+  console.log("🔴 Publisher Error:", err);
+});
+
+subscriber.on("error", (err) => {
+  console.log("🔴 Subscriber Error:", err);
+});
+
+module.exports = {
+  redisClient,
+  publisher,
+  subscriber,
+};

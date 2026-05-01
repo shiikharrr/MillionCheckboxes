@@ -2,42 +2,114 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
   <title>Million Checkboxes</title>
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
+  <!-- ===================== -->
+  <!-- NAVBAR -->
+  <!-- ===================== -->
+
   <header class="navbar">
+
     <div>
       <h1>☑ Million Checkboxes</h1>
+
       <p>Real-time checkbox sync system</p>
     </div>
 
     <div class="status">
-      <span id="connection-status">🟡 Connecting...</span>
+      <span id="connection-status">
+        🟡 Connecting...
+      </span>
     </div>
+
   </header>
 
+  <!-- ===================== -->
+  <!-- MAIN -->
+  <!-- ===================== -->
+
   <main>
+
+    <!-- ===================== -->
+    <!-- AUTH -->
+    <!-- ===================== -->
+
+    <section class="auth-section">
+
+      <input
+        type="text"
+        id="username"
+        placeholder="Username"
+      />
+
+      <input
+        type="password"
+        id="password"
+        placeholder="Password"
+      />
+
+      <button id="register-btn">
+        Register
+      </button>
+
+      <button id="login-btn">
+        Login
+      </button>
+
+      <span id="auth-status">
+        Guest Mode
+      </span>
+
+    </section>
+
+    <!-- ===================== -->
+    <!-- STATS -->
+    <!-- ===================== -->
+
     <div class="stats">
+
       <div class="card">
         <h2>Total Checkboxes</h2>
-        <p id="total-count">1000</p>
+
+        <p id="total-count">
+          1000
+        </p>
       </div>
 
       <div class="card">
         <h2>Checked</h2>
-        <p id="checked-count">0</p>
+
+        <p id="checked-count">
+          0
+        </p>
       </div>
+
     </div>
 
+    <!-- ===================== -->
+    <!-- GRID -->
+    <!-- ===================== -->
+
     <section class="grid-container">
+
       <div id="grid"></div>
+
     </section>
+
   </main>
 
   <script src="script.js"></script>
+
 </body>
 </html>

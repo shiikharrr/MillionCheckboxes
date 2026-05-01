@@ -11,6 +11,10 @@ body {
   min-height: 100vh;
 }
 
+/* ===================== */
+/* NAVBAR */
+/* ===================== */
+
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -19,11 +23,12 @@ body {
   padding: 20px 40px;
 
   background: #111827;
+
   border-bottom: 1px solid #1f2937;
 }
 
 .navbar h1 {
-  font-size: 28px;
+  font-size: 32px;
 }
 
 .navbar p {
@@ -32,56 +37,123 @@ body {
 }
 
 .status {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
 }
+
+/* ===================== */
+/* MAIN */
+/* ===================== */
 
 main {
   padding: 30px 40px;
 }
 
+/* ===================== */
+/* AUTH */
+/* ===================== */
+
+.auth-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.auth-section input {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+.auth-section button {
+  padding: 12px 18px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  background: #3b82f6;
+
+  color: white;
+
+  font-weight: bold;
+}
+
+.auth-section button:hover {
+  opacity: 0.9;
+}
+
+#auth-status {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+/* ===================== */
+/* STATS */
+/* ===================== */
+
 .stats {
   display: flex;
   gap: 20px;
+
   margin-bottom: 30px;
 }
 
 .card {
   background: #1e293b;
+
   padding: 20px;
+
   border-radius: 12px;
+
   width: 220px;
 }
 
 .card h2 {
-  font-size: 18px;
   color: #cbd5e1;
+
   margin-bottom: 10px;
 }
 
 .card p {
-  font-size: 32px;
+  font-size: 36px;
+
   font-weight: bold;
 }
 
+/* ===================== */
+/* GRID */
+/* ===================== */
+
 .grid-container {
   background: #111827;
+
   padding: 20px;
+
   border-radius: 16px;
 
   height: 70vh;
+
   overflow: auto;
 }
 
 #grid {
   display: grid;
+
   grid-template-columns: repeat(40, 1fr);
+
   gap: 10px;
 }
 
 #grid input[type="checkbox"] {
   width: 20px;
   height: 20px;
+
   cursor: pointer;
 
   accent-color: #3b82f6;
@@ -93,11 +165,20 @@ main {
   transform: scale(1.2);
 }
 
+/* ===================== */
+/* RESPONSIVE */
+/* ===================== */
+
 @media (max-width: 768px) {
+
   .navbar {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
+  }
+
+  .auth-section {
+    flex-direction: column;
   }
 
   .stats {
