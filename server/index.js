@@ -2,7 +2,12 @@ const express = require("express");
 const path = require("path");
 const http = require("http");
 const WebSocket = require("ws");
-const redisClient = require("./redis");
+const {
+  redisClient,
+  publisher,
+  subscriber,
+} = require("./redis");
+const checkRateLimit = require("./rateLimiter");
 
 const app = express();
 const PORT = 3000;
@@ -21,40 +26,77 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // Store checkbox states
-const checkboxStates = {};
+// const checkboxStates = {};
+
+subscriber.subscribe("checkbox-updates", (message) => {
+  const data = JSON.parse(message);
+
+  // Broadcast to all websocket clients
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(
+        JSON.stringify({
+          type: "update",
+          id: data.id,
+          checked: data.checked,
+        })
+      );
+    }
+  });
+});
 
 // WebSocket connection
-wss.on("connection", (ws) => {
-  console.log("🟢 New client connected");
+wss.on("connection", async (ws) => {
+  console.log("🟢 Client connected");
 
-  // Send existing states to new user
+  // Load all checkbox states from Redis
+  const states = await redisClient.hGetAll("checkboxes");
+
+  // Send current states to user
   ws.send(
     JSON.stringify({
       type: "initial-state",
-      states: checkboxStates,
+      states,
     })
   );
 
-  // Listen for messages
-  ws.on("message", (message) => {
+  // Listen for checkbox updates
+  ws.on("message", async (message) => {
     const data = JSON.parse(message);
 
-    // Checkbox update event
-    if (data.type === "toggle") {
-      checkboxStates[data.id] = data.checked;
+    const indentifier = `user-${ws._socket.remoteAddress}`;
 
-      // Broadcast to ALL users
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(
-            JSON.stringify({
-              type: "update",
-              id: data.id,
-              checked: data.checked,
-            })
-          );
-        }
-      });
+    const allowed = await checkRateLimit(indentifier);
+
+    if (!allowed) {
+      ws.send(
+        JSON.stringify({
+          type: "rate-limit",
+          message: "Too many actions. Please wait.",
+        })
+      );
+    
+    return;
+    }
+
+    if (data.type === "toggle") {
+
+      // Save checkbox state in Redis
+      await redisClient.hSet(
+        "checkboxes",
+        data.id,
+        data.checked
+      );
+
+      // Broadcast update to all users
+      await publisher.publish(
+        "checkbox-updates",
+        JSON.stringify({
+          id: data.id,
+          checked: data.checked,
+        })
+      );
+
     }
   });
 
