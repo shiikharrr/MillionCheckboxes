@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const http = require("http");
 const WebSocket = require("ws");
+const redisClient = require("./redis");
 
 const app = express();
 const PORT = 3000;
