@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 
 const bcrypt = require("bcryptjs");
@@ -10,7 +12,7 @@ const users = require("./users");
 
 const router = express.Router();
 
-const JWT_SECRET = "super-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // =======================
 // REGISTER

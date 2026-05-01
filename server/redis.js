@@ -1,8 +1,10 @@
+require("dotenv").config();
+
 const redis = require("redis");
 
 // Main Redis client
 const redisClient = redis.createClient({
-  url: "redis://localhost:6379",
+  url: process.env.REDIS_URL,
 });
 
 // Publisher client
