@@ -6,10 +6,6 @@ const checkedCountElement =
 const connectionStatus =
   document.getElementById("connection-status");
 
-// =======================
-// AUTH ELEMENTS
-// =======================
-
 const registerBtn =
   document.getElementById("register-btn");
 
@@ -25,59 +21,127 @@ const passwordInput =
 const authStatus =
   document.getElementById("auth-status");
 
-// =======================
-// AUTH STATE
-// =======================
-
 let token = localStorage.getItem("token");
 
 if (token) {
-  authStatus.textContent = "🟢 Logged In";
+  authStatus.textContent = "Logged In";
 }
 
-// =======================
-// WEBSOCKET
-// =======================
-
-const socket = new WebSocket(
-  `ws://${window.location.host}`
-);
-
-// =======================
-// SOCKET EVENTS
-// =======================
-
-socket.onopen = () => {
-  console.log("✅ WebSocket Connected");
-
-  connectionStatus.textContent =
-    "🟢 Connected";
-};
-
-socket.onerror = (error) => {
-  console.log("❌ Socket Error", error);
-
-  connectionStatus.textContent =
-    "🔴 Error";
-};
-
-socket.onclose = () => {
-  console.log("🔴 Socket Closed");
-
-  connectionStatus.textContent =
-    "🔴 Disconnected";
-};
-
-// =======================
-// CHECKBOXES
-// =======================
+let socket;
 
 const TOTAL_CHECKBOXES = 1000;
 
 const checkboxes = {};
 
-// Create checkbox grid
-for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
+function connectWebSocket() {
+
+  let socketUrl =
+    `ws://${window.location.host}`;
+
+  if (token) {
+    socketUrl += `?token=${token}`;
+  }
+
+  socket = new WebSocket(socketUrl);
+
+  socket.onopen = () => {
+
+    console.log(
+      "WebSocket Connected"
+    );
+
+    connectionStatus.textContent =
+      "Connected";
+  };
+
+  socket.onerror = (error) => {
+
+    console.log(
+      "Socket Error",
+      error
+    );
+
+    connectionStatus.textContent =
+      "Connection Error";
+  };
+
+  socket.onclose = () => {
+
+    console.log(
+      "Socket Closed"
+    );
+
+    connectionStatus.textContent =
+      "Disconnected";
+  };
+
+  socket.onmessage = (event) => {
+
+    const data =
+      JSON.parse(event.data);
+
+    if (
+      data.type === "rate-limit"
+    ) {
+
+      alert(data.message);
+
+      return;
+    }
+
+    if (
+      data.type === "unauthorized"
+    ) {
+
+      alert(data.message);
+
+      return;
+    }
+
+    if (
+      data.type === "initial-state"
+    ) {
+
+      Object.keys(data.states)
+        .forEach((id) => {
+
+          if (
+            checkboxes[id]
+          ) {
+
+            checkboxes[id].checked =
+              data.states[id] ===
+              "true";
+          }
+        });
+
+      updateCheckedCount();
+    }
+
+    if (
+      data.type === "update"
+    ) {
+
+      if (
+        checkboxes[data.id]
+      ) {
+
+        checkboxes[data.id].checked =
+          data.checked;
+      }
+
+      updateCheckedCount();
+    }
+  };
+}
+
+connectWebSocket();
+
+for (
+  let i = 0;
+  i < TOTAL_CHECKBOXES;
+  i++
+) {
 
   const checkbox =
     document.createElement("input");
@@ -88,12 +152,10 @@ for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
 
   checkboxes[i] = checkbox;
 
-  // Toggle checkbox
   checkbox.addEventListener(
     "change",
     () => {
 
-      // Require login
       if (!token) {
 
         alert(
@@ -106,7 +168,6 @@ for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
         return;
       }
 
-      // Send update
       if (
         socket.readyState ===
         WebSocket.OPEN
@@ -128,56 +189,6 @@ for (let i = 0; i < TOTAL_CHECKBOXES; i++) {
   grid.appendChild(checkbox);
 }
 
-// =======================
-// RECEIVE SOCKET EVENTS
-// =======================
-
-socket.onmessage = (event) => {
-
-  const data =
-    JSON.parse(event.data);
-
-  // Rate limit
-  if (data.type === "rate-limit") {
-
-    alert(data.message);
-
-    return;
-  }
-
-  // Initial state
-  if (data.type === "initial-state") {
-
-    Object.keys(data.states)
-      .forEach((id) => {
-
-        if (checkboxes[id]) {
-
-          checkboxes[id].checked =
-            data.states[id] === "true";
-        }
-      });
-
-    updateCheckedCount();
-  }
-
-  // Live updates
-  if (data.type === "update") {
-
-    if (checkboxes[data.id]) {
-
-      checkboxes[data.id].checked =
-        data.checked;
-    }
-
-    updateCheckedCount();
-  }
-};
-
-// =======================
-// UPDATE COUNT
-// =======================
-
 function updateCheckedCount() {
 
   let checked = 0;
@@ -193,10 +204,6 @@ function updateCheckedCount() {
   checkedCountElement.textContent =
     checked;
 }
-
-// =======================
-// REGISTER
-// =======================
 
 registerBtn.addEventListener(
   "click",
@@ -232,10 +239,6 @@ registerBtn.addEventListener(
     alert(data.message);
   }
 );
-
-// =======================
-// LOGIN
-// =======================
 
 loginBtn.addEventListener(
   "click",
@@ -278,7 +281,11 @@ loginBtn.addEventListener(
       token = data.token;
 
       authStatus.textContent =
-        "🟢 Logged In";
+        "Logged In";
+
+      socket.close();
+
+      connectWebSocket();
 
       alert("Login successful");
 
