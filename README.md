@@ -1,8 +1,26 @@
 # Million Checkboxes
 
-A scalable real-time checkbox synchronization system built with Node.js, Express, WebSockets, Redis, and JWT authentication.
+A scalable real-time checkbox synchronization system built using Node.js, Express, WebSockets, Redis, JWT authentication, Docker, and cloud deployment.
 
-This project demonstrates distributed real-time architecture concepts including WebSocket communication, Redis Pub/Sub, authentication, rate limiting, and scalable frontend rendering.
+This project demonstrates distributed real-time architecture concepts including WebSocket communication, Redis Pub/Sub synchronization, scalable frontend rendering, authentication, and rate limiting.
+
+---
+
+# Live Demo
+
+https://millioncheckboxes.onrender.com
+
+---
+
+# Demo Video
+
+https://youtu.be/w7N3dnpMo_E
+
+---
+
+# GitHub Repository
+
+https://github.com/shiikharrr/MillionCheckboxes
 
 ---
 
@@ -14,10 +32,11 @@ This project demonstrates distributed real-time architecture concepts including 
 - Redis Pub/Sub architecture
 - JWT authentication
 - Protected WebSocket connections
-- Custom Redis-based rate limiting
+- Redis-based rate limiting
 - Chunked rendering
 - Lazy loading for scalability
-- Environment variable configuration
+- Docker containerization
+- Cloud deployment
 - Responsive UI
 
 ---
@@ -32,14 +51,19 @@ This project demonstrates distributed real-time architecture concepts including 
 ## Backend
 - Node.js
 - Express.js
-- WebSocket (ws)
+- WebSockets (ws)
 
 ## Database / Cache
 - Redis
+- Upstash Redis
 
 ## Authentication
 - JWT
 - bcryptjs
+
+## Deployment
+- Docker
+- Render
 
 ---
 
@@ -53,7 +77,7 @@ Redis is used for:
 - distributed synchronization
 - rate limiting counters
 
-Authentication is implemented using JWT tokens.
+JWT authentication protects write actions and authenticated WebSocket interactions.
 
 ---
 
@@ -79,10 +103,10 @@ The application uses WebSockets to synchronize checkbox state instantly between 
 
 When a checkbox is toggled:
 1. frontend sends WebSocket event
-2. server validates request
-3. Redis stores state
+2. backend validates authentication
+3. Redis stores checkbox state
 4. Redis Pub/Sub broadcasts update
-5. all connected clients receive update
+5. all connected clients receive synchronized update instantly
 
 ---
 
@@ -90,7 +114,7 @@ When a checkbox is toggled:
 
 Redis Pub/Sub enables distributed synchronization across multiple backend instances.
 
-This architecture supports horizontal scalability.
+This architecture supports horizontal scalability and real-time distributed updates.
 
 ---
 
@@ -101,8 +125,8 @@ The application uses JWT-based authentication.
 Features:
 - user registration
 - login
-- protected WebSocket actions
-- authenticated socket connections
+- authenticated WebSocket actions
+- protected checkbox interactions
 
 Guests can view checkbox states but cannot modify them.
 
@@ -122,12 +146,12 @@ Implementation:
 
 # Frontend Optimization
 
-To support large-scale rendering:
+To support scalable rendering:
 - checkboxes are rendered in chunks
 - lazy loading is implemented
 - DocumentFragment batching is used
 
-This avoids rendering thousands of DOM elements simultaneously.
+This prevents rendering thousands of DOM nodes simultaneously.
 
 ---
 
@@ -138,43 +162,41 @@ Create a `.env` file in the root directory:
 ```env
 PORT=3000
 
-JWT_SECRET=my-super-secret-jwt-key
+JWT_SECRET=your-secret-key
 
-REDIS_URL=redis://localhost:6379
+REDIS_URL=your-redis-url
 ```
 
 ---
 
 # Installation
 
-## Clone repository
+## Clone Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/shiikharrr/MillionCheckboxes.git
 ```
 
-## Install dependencies
+## Install Dependencies
 
 ```bash
 npm install
 ```
 
-## Start Redis
-
-```bash
-docker start redis-server
-```
-
-OR
-
-```bash
-docker run --name redis-server -p 6379:6379 redis
-```
-
-## Start application
+## Start Development Server
 
 ```bash
 npm start
+```
+
+---
+
+# Docker Support
+
+## Run using Docker Compose
+
+```bash
+docker compose up --build
 ```
 
 ---
@@ -195,21 +217,11 @@ server/
   users.js
 
 .env
+Dockerfile
+docker-compose.yml
 package.json
 README.md
 ```
-
----
-
-# Future Improvements
-
-- Full virtualization
-- OAuth / OIDC integration
-- Multi-room collaboration
-- Redis cluster support
-- Database persistence
-- Kubernetes deployment
-- Horizontal backend scaling
 
 ---
 
@@ -217,12 +229,26 @@ README.md
 
 This project demonstrates:
 - distributed Pub/Sub architecture
-- real-time synchronization
-- scalable frontend rendering
+- scalable real-time synchronization
+- chunked frontend rendering
+- lazy loading
 - stateless JWT authentication
 - Redis-backed shared state
+- Docker-based deployment
 
 The architecture can be extended to support large-scale collaborative systems.
+
+---
+
+# Future Improvements
+
+- Full virtualization
+- OAuth integration
+- Multi-room collaboration
+- Redis cluster support
+- Database persistence
+- Kubernetes deployment
+- Horizontal backend scaling
 
 ---
 
