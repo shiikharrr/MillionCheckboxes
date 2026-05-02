@@ -1,42 +1,27 @@
-require("dotenv").config();
-
-const express = require("express");
-
 const bcrypt = require("bcryptjs");
 
 const jwt = require("jsonwebtoken");
 
-const crypto = require("crypto");
-
 const users = require("./users");
 
-const router = express.Router();
+const JWT_SECRET =
+  process.env.JWT_SECRET || "secretkey";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+function register(req, res) {
 
-// =======================
-// REGISTER
-// =======================
+  try {
 
-router.post(
-  "/register",
-  express.json(),
-  async (req, res) => {
+    const { username, password } =
+      req.body;
 
-    const {
-      username,
-      password,
-    } = req.body;
-
-    // Validate input
     if (!username || !password) {
+
       return res.status(400).json({
-        message:
-          "Username and password required",
+        error:
+          "Username and password required"
       });
     }
 
-    // Check existing user
     const existingUser =
       users.find(
         (user) =>
@@ -44,95 +29,100 @@ router.post(
       );
 
     if (existingUser) {
+
       return res.status(400).json({
-        message:
-          "User already exists",
+        error: "User already exists"
       });
     }
 
-    // Hash password
     const hashedPassword =
-      await bcrypt.hash(password, 10);
+      bcrypt.hashSync(password, 10);
 
-    // Create user
-    const user = {
-      id: crypto.randomUUID(),
-
+    const newUser = {
+      id: Date.now().toString(),
       username,
-
-      password: hashedPassword,
+      password: hashedPassword
     };
 
-    users.push(user);
+    users.push(newUser);
+
+    const token = jwt.sign(
+      {
+        id: newUser.id,
+        username: newUser.username
+      },
+      JWT_SECRET
+    );
 
     res.json({
-      message:
-        "User registered successfully",
+      token
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      error: "Registration failed"
     });
   }
-);
+}
 
-// =======================
-// LOGIN
-// =======================
+function login(req, res) {
 
-router.post(
-  "/login",
-  express.json(),
-  async (req, res) => {
+  try {
 
-    const {
-      username,
-      password,
-    } = req.body;
+    const { username, password } =
+      req.body;
 
-    // Find user
-    const user =
-      users.find(
-        (u) =>
-          u.username === username
-      );
+    const user = users.find(
+      (user) =>
+        user.username === username
+    );
 
     if (!user) {
+
       return res.status(400).json({
-        message:
-          "Invalid credentials",
+        error: "User not found"
       });
     }
 
-    // Compare password
     const validPassword =
-      await bcrypt.compare(
+      bcrypt.compareSync(
         password,
         user.password
       );
 
     if (!validPassword) {
+
       return res.status(400).json({
-        message:
-          "Invalid credentials",
+        error: "Invalid password"
       });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       {
-        userId: user.id,
-
-        username: user.username,
+        id: user.id,
+        username: user.username
       },
-
-      JWT_SECRET,
-
-      {
-        expiresIn: "1d",
-      }
+      JWT_SECRET
     );
 
     res.json({
-      token,
+      token
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      error: "Login failed"
     });
   }
-);
+}
 
-module.exports = router;
+module.exports = {
+  register,
+  login
+};
