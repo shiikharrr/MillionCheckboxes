@@ -13,14 +13,16 @@ const {
 } = require("./redis");
 
 const {
-  registerUser,
-  loginUser
+  register,
+  login
 } = require("./auth");
 
 const rateLimiter =
   require("./rateLimiter");
 
 const app = express();
+
+app.use(express.json());
 
 const server =
   http.createServer(app);
@@ -34,9 +36,7 @@ const PORT =
   process.env.PORT || 3000;
 
 const JWT_SECRET =
-  process.env.JWT_SECRET;
-
-app.use(express.json());
+  process.env.JWT_SECRET || "secretkey";
 
 app.use(
   express.static(
@@ -72,72 +72,12 @@ subscriber.subscribe(
 
 app.post(
   "/register",
-  async (req, res) => {
-
-    const {
-      username,
-      password
-    } = req.body;
-
-    const result =
-      await registerUser(
-        username,
-        password
-      );
-
-    if (!result.success) {
-
-      return res.status(400).json({
-        message: result.message
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        username
-      },
-      JWT_SECRET
-    );
-
-    res.json({
-      token
-    });
-  }
+  register
 );
 
 app.post(
   "/login",
-  async (req, res) => {
-
-    const {
-      username,
-      password
-    } = req.body;
-
-    const result =
-      await loginUser(
-        username,
-        password
-      );
-
-    if (!result.success) {
-
-      return res.status(400).json({
-        message: result.message
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        username
-      },
-      JWT_SECRET
-    );
-
-    res.json({
-      token
-    });
-  }
+  login
 );
 
 wss.on(
@@ -156,6 +96,7 @@ wss.on(
       );
 
     if (!savedCheckboxes) {
+
       savedCheckboxes = "{}";
     }
 
@@ -258,6 +199,7 @@ wss.on(
           if (
             !currentCheckboxes
           ) {
+
             currentCheckboxes =
               "{}";
           }
@@ -278,7 +220,7 @@ wss.on(
             )
           );
 
-          publisher.publish(
+          await publisher.publish(
             "checkbox-updates",
             JSON.stringify({
               id: data.id,
@@ -290,18 +232,24 @@ wss.on(
       }
     );
 
-    ws.on("close", () => {
+    ws.on(
+      "close",
+      () => {
 
-      console.log(
-        "Client disconnected"
-      );
-    });
+        console.log(
+          "Client disconnected"
+        );
+      }
+    );
   }
 );
 
-server.listen(PORT, () => {
+server.listen(
+  PORT,
+  () => {
 
-  console.log(
-    `Server running at http://localhost:${PORT}`
-  );
-});
+    console.log(
+      `Server running at http://localhost:${PORT}`
+    );
+  }
+);
