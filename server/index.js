@@ -1,52 +1,48 @@
 require("dotenv").config();
 
 const express = require("express");
-
 const path = require("path");
-
 const http = require("http");
-
 const WebSocket = require("ws");
-
 const jwt = require("jsonwebtoken");
-
-const authRoutes = require("./auth");
 
 const {
   redisClient,
   publisher,
-  subscriber,
+  subscriber
 } = require("./redis");
 
-const checkRateLimit =
+const {
+  registerUser,
+  loginUser
+} = require("./auth");
+
+const rateLimiter =
   require("./rateLimiter");
 
 const app = express();
-
-const PORT = 
-  process.env.PORT || 3000;
-
-const JWT_SECRET =
-  process.env.JWT_SECRET;
 
 const server =
   http.createServer(app);
 
 const wss =
   new WebSocket.Server({
-    server,
+    server
   });
+
+const PORT =
+  process.env.PORT || 3000;
+
+const JWT_SECRET =
+  process.env.JWT_SECRET;
+
+app.use(express.json());
 
 app.use(
   express.static(
-    path.join(
-      __dirname,
-      "../client"
-    )
+    path.join(__dirname, "../client")
   )
 );
-
-app.use("/auth", authRoutes);
 
 subscriber.subscribe(
   "checkbox-updates",
@@ -55,82 +51,120 @@ subscriber.subscribe(
     const data =
       JSON.parse(message);
 
-    wss.clients.forEach(
-      (client) => {
+    wss.clients.forEach((client) => {
 
-        if (
-          client.readyState ===
-          WebSocket.OPEN
-        ) {
+      if (
+        client.readyState ===
+        WebSocket.OPEN
+      ) {
 
-          client.send(
-            JSON.stringify({
-              type: "update",
-              id: data.id,
-              checked:
-                data.checked,
-            })
-          );
-        }
+        client.send(
+          JSON.stringify({
+            type: "update",
+            id: data.id,
+            checked: data.checked
+          })
+        );
       }
+    });
+  }
+);
+
+app.post(
+  "/register",
+  async (req, res) => {
+
+    const {
+      username,
+      password
+    } = req.body;
+
+    const result =
+      await registerUser(
+        username,
+        password
+      );
+
+    if (!result.success) {
+
+      return res.status(400).json({
+        message: result.message
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        username
+      },
+      JWT_SECRET
     );
+
+    res.json({
+      token
+    });
+  }
+);
+
+app.post(
+  "/login",
+  async (req, res) => {
+
+    const {
+      username,
+      password
+    } = req.body;
+
+    const result =
+      await loginUser(
+        username,
+        password
+      );
+
+    if (!result.success) {
+
+      return res.status(400).json({
+        message: result.message
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        username
+      },
+      JWT_SECRET
+    );
+
+    res.json({
+      token
+    });
   }
 );
 
 wss.on(
   "connection",
-  async (ws, req) => {
+  async (ws) => {
 
     console.log(
       "Client connected"
     );
 
-    const url =
-      new URL(
-        req.url,
-        `http://${req.headers.host}`
-      );
+    ws.isAuthenticated = false;
 
-    const token =
-      url.searchParams.get(
-        "token"
-      );
-
-    let authenticatedUser =
-      null;
-
-    if (token) {
-
-      try {
-
-        authenticatedUser =
-          jwt.verify(
-            token,
-            JWT_SECRET
-          );
-
-        console.log(
-          "Authenticated:",
-          authenticatedUser.username
-        );
-
-      } catch (error) {
-
-        console.log(
-          "Invalid token"
-        );
-      }
-    }
-
-    const states =
-      await redisClient.hGetAll(
+    let savedCheckboxes =
+      await redisClient.get(
         "checkboxes"
       );
 
+    if (!savedCheckboxes) {
+      savedCheckboxes = "{}";
+    }
+
     ws.send(
       JSON.stringify({
-        type: "initial-state",
-        states,
+        type: "init",
+        checkboxes: JSON.parse(
+          savedCheckboxes
+        )
       })
     );
 
@@ -141,25 +175,39 @@ wss.on(
         const data =
           JSON.parse(message);
 
-        const identifier =
-          ws._socket.remoteAddress;
+        if (
+          data.type === "auth"
+        ) {
 
-        const allowed =
-          await checkRateLimit(
-            identifier
-          );
+          try {
 
-        if (!allowed) {
+            const decoded =
+              jwt.verify(
+                data.token,
+                JWT_SECRET
+              );
 
-          ws.send(
-            JSON.stringify({
-              type:
-                "rate-limit",
+            ws.user = decoded;
 
-              message:
-                "Too many actions. Please slow down.",
-            })
-          );
+            ws.isAuthenticated = true;
+
+            ws.send(
+              JSON.stringify({
+                type:
+                  "auth-success"
+              })
+            );
+
+          } catch {
+
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                message:
+                  "Invalid token"
+              })
+            );
+          }
 
           return;
         }
@@ -169,35 +217,73 @@ wss.on(
         ) {
 
           if (
-            !authenticatedUser
+            !ws.isAuthenticated
           ) {
 
             ws.send(
               JSON.stringify({
-                type:
-                  "unauthorized",
-
+                type: "error",
                 message:
-                  "Login required",
+                  "Authentication required"
               })
             );
 
             return;
           }
 
-          await redisClient.hSet(
+          const allowed =
+            await rateLimiter(
+              ws.user.username
+            );
+
+          if (!allowed) {
+
+            ws.send(
+              JSON.stringify({
+                type:
+                  "rate-limit",
+                message:
+                  "Too many requests"
+              })
+            );
+
+            return;
+          }
+
+          let currentCheckboxes =
+            await redisClient.get(
+              "checkboxes"
+            );
+
+          if (
+            !currentCheckboxes
+          ) {
+            currentCheckboxes =
+              "{}";
+          }
+
+          currentCheckboxes =
+            JSON.parse(
+              currentCheckboxes
+            );
+
+          currentCheckboxes[
+            data.id
+          ] = data.checked;
+
+          await redisClient.set(
             "checkboxes",
-            data.id,
-            data.checked
+            JSON.stringify(
+              currentCheckboxes
+            )
           );
 
-          await publisher.publish(
+          publisher.publish(
             "checkbox-updates",
-
             JSON.stringify({
               id: data.id,
               checked:
-                data.checked,
+                data.checked
             })
           );
         }
@@ -212,16 +298,6 @@ wss.on(
     });
   }
 );
-
-app.get("/", (req, res) => {
-
-  res.sendFile(
-    path.join(
-      __dirname,
-      "../client/index.html"
-    )
-  );
-});
 
 server.listen(PORT, () => {
 
